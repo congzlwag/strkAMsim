@@ -2,7 +2,7 @@ import Interpolations
 import HDF5
 
 function streak_entangle(pKe::Vector{Float64}, IP1s::Vector{Float64}, Ipdouble::Real,
-        E_X::Array{Float64,2}, A_L::Array{Float64,2}, t_X::Array{Float64,1}, config::Dict{String, Any}; 
+        E_X::Array{Float64,2}, A_L::Array{Float64,2}, t_X::Array{Float64,1}, config::Dict{String, Any};
         cohsum::Bool=true, avgEp::Bool=false, grho=(x->1))
 """
     Calculate the complex amplitudes from multiple continua
@@ -19,7 +19,7 @@ function streak_entangle(pKe::Vector{Float64}, IP1s::Vector{Float64}, Ipdouble::
     else
         amphasors = amphasors[1:1];
     end
-    
+
     intensity_size::Vector{Int32} = [NT0, Npi,];
     bp_size::Vector{Int32} = [1,];
     accum2Dint = accum2Dint_kpavg;
@@ -31,12 +31,12 @@ function streak_entangle(pKe::Vector{Float64}, IP1s::Vector{Float64}, Ipdouble::
         bp_size = [N_pz, NT0, Npi,];
         amphasors = reshape(amphasors, 1, :, 1);
     end
-    
+
     intensity::Array{Float64} = fill(0, intensity_size...);
     intensity_inc::Array{Float64} = fill(0, NT0, Npi);
     bp_outs::Array{ComplexF64} = fill(0, bp_size...);
     density::Array{Float64} = fill(0, N_pz, NT0, Npi);
-    
+
     dos::Vector{Float64} = sqrt.(pKe);
     dos ./= sum(dos);
 
@@ -50,7 +50,7 @@ function streak_entangle(pKe::Vector{Float64}, IP1s::Vector{Float64}, Ipdouble::
             config["Ip"] = Ip;
             config["AMelectronKE"] = Ip - Ipdouble;
             bp = complex_Amp_Pspace(E_X, A_L, t_X, config);
-            
+
             # @assert size(bp) == [N_pz, NT0, Npi,]
             if cohsum  # accumulate the complex amp over continuua
                 @. bp_outs += bp * (amphasors ^ (iIp-1));
@@ -72,10 +72,10 @@ function streak_entangle(pKe::Vector{Float64}, IP1s::Vector{Float64}, Ipdouble::
     intensity
 end
 
-function streak_entangle_gridIP(pKe::Vector{Float64}, IP1a::Vector{Float64}, 
-            IP1b::Vector{Float64}, E_X::Vector{Float64}, A_L::Array{Float64,2}, 
-            t_X::Vector{Float64}, config::Dict{String, Any}, 
-        h5gh::HDF5.Group, tag::String; 
+function streak_entangle_gridIP(pKe::Vector{Float64}, IP1a::Vector{Float64},
+            IP1b::Vector{Float64}, E_X::Vector{Float64}, A_L::Array{Float64,2},
+            t_X::Vector{Float64}, config::Dict{String, Any},
+        h5gh::HDF5.Group, tag::String;
         cohsum::Bool=true, grho=(x->1))
     """
     for each photoelectron eKE
@@ -91,13 +91,13 @@ function streak_entangle_gridIP(pKe::Vector{Float64}, IP1a::Vector{Float64},
     NIPb::Int = length(IP1b);
     amphasors::Array{ComplexF64} = checkAMphasors(config);
     NT0::Int = length(amphasors);
-    
+
     intensity_size::Tuple = (NT0, Npi, NIPb, NIPa);
     density_size::Vector{Int32} = [N_pz, NT0, Npi];
     # bp_size::Tuple = (N_pz, Npi, NIPa+NIPb);
     # IP_all::Vector{Float64} = vcat(IP1a..., IP1b...);
     amphasors = reshape(amphasors, 1, :, 1);
-    
+
     intensity = HDF5.create_dataset(h5gh, tag, Float64,
                                     intensity_size; chunk=(NT0, Npi,1,1))
     # println("$(tag) created in the H5 file")
@@ -105,7 +105,7 @@ function streak_entangle_gridIP(pKe::Vector{Float64}, IP1a::Vector{Float64},
     density::Array{Float64} = fill(0, density_size...);
     bpa_all::Array{ComplexF64} = fill(0, N_pz, Npi, NIPa...);
     bpb_all::Array{ComplexF64} = fill(0, N_pz, Npi, NIPb...);
-    
+
     dos::Vector{Float64} = sqrt.(pKe);
     gmsk::Array{Float64} = make_recagmap(config, grho);
     # @showprogress 1 "Scan Ep..." for (jpKe, pKej) in enumerate(pKe)
@@ -142,7 +142,7 @@ end
 
 using FLoops
 # Multithreading with FLoops. It does not work with P_xm, P_ym being iterators
-function complex_Amp_Pspace(E_X::Array{Float64,2}, A::Array{Float64,2}, 
+function complex_Amp_Pspace(E_X::Array{Float64,2}, A::Array{Float64,2},
          t_X::Array{Float64,1}, config::Dict{String, Any})::Array{ComplexF64,3}
 
     # Apply Configurations and convert units
@@ -155,16 +155,16 @@ function complex_Amp_Pspace(E_X::Array{Float64,2}, A::Array{Float64,2},
     Kabsmax::Float64 = get(config, "Kabsmax", K_max*5);
     dipoleM::Function = config["dipole_matrix"];
     Zaccum::Bool = get(config, "accumPz", false);
-    
-    t_X = t_X / T_AU; 
+
+    t_X = t_X / T_AU;
     t_X .-= t_X[1];
-    # From now on, everything is in a.u., and t0 is shifted to 0 
+    # From now on, everything is in a.u., and t0 is shifted to 0
     # because both E_X and A fields have been already evaluated
-    
+
     NT0::Int = size(E_X,2); # Number of electric fields to simulate
     N_t::Int = size(t_X,1); # Number of time points
     (dt, tw_iter) = get_dtaxis(t_X);
-    
+
     # Setup momentum grid
     Pz_slice = get(config, "Pz_slice", nothing);
     P_xm, P_ym, P_z = get_Pgrid(config["Np"], Pz_slice, config["dpz"]);
@@ -175,21 +175,21 @@ function complex_Amp_Pspace(E_X::Array{Float64,2}, A::Array{Float64,2},
     end
 
     b_p::Array{ComplexF64} = fill(0.0, N_pz, NT0, N_pi);
-    
+
     #Phase from photoionization
     DPhase_PI::Array{ComplexF64,1} = exp.( (1im * (pKe + I_p) + Gamma/2 ).* t_X );
     DPhase_PI *= dipoleM(sqrt(2*pKe),0;Ip_au=I_p, Py=0,Pz=0); # size=(N_t,)
     PI_ints::Array{ComplexF64,2} = E_X .* DPhase_PI;
-    # cum_Integrate!(PI_ints, dt, dim=1); 
+    # cum_Integrate!(PI_ints, dt, dim=1);
     # Note that dt isa Union{Real, Vector{Float64}}
-    PI_ints .*= dt; 
+    PI_ints .*= dt;
     cumsum!(PI_ints, PI_ints; dims=1)
     # Inner integral finished
     PI_ints .*= dt; # For the outer integral, once for all
-    
+
     P_xm = vec(collect(P_xm)); P_ym = vec(collect(P_ym));
     # let dt=dt
-    @floop ThreadedEx() for (ind_p, Px,Py) in zip(1:N_pi, P_xm, P_ym)
+    @floop ThreadedEx(basesize=3) for (ind_p, Px,Py) in zip(1:N_pi, P_xm, P_ym)
         @init begin
             I_xy = Vector{Float64}(undef,N_t)
             V_x = Vector{Float64}(undef,N_t);
@@ -212,7 +212,7 @@ function complex_Amp_Pspace(E_X::Array{Float64,2}, A::Array{Float64,2},
                 if (K_min > K) | (Kabsmax < K)
                     continue
                 end
-                zphase_rate = 1im * K_z - (Gamma/2); 
+                zphase_rate = 1im * K_z - (Gamma/2);
                 # PI_int = @inbounds @view PI_ints[:, ind_calc];
                 # PI_int_gen = genWithTail(PI_int, N_tE, N_t);
                 # intgrand = (exp(1im * vlkv) * exp(zphase_rate * t) * PId * tw
@@ -227,7 +227,7 @@ function complex_Amp_Pspace(E_X::Array{Float64,2}, A::Array{Float64,2},
     b_p
 end
 
-function complex_Amp_Pspace(E_X::Array{Float64,1}, A::Array{Float64,2}, 
+function complex_Amp_Pspace(E_X::Array{Float64,1}, A::Array{Float64,2},
          t_X::Array{Float64,1}, IP1_eV::Vector{Float64}, config::Dict{String, Any}, bp_dest::Union{AbstractArray{ComplexF64,3},Nothing})::Array{ComplexF64,3}
     """Vectorized over IP1"""
     # Apply Configurations and convert units
@@ -240,16 +240,16 @@ function complex_Amp_Pspace(E_X::Array{Float64,1}, A::Array{Float64,2},
     Kabsmax::Float64 = get(config, "Kabsmax", K_max*10);
     dipoleM::Function = config["dipole_matrix"];
     Zaccum::Bool = get(config, "accumPz", false);
-    
-    t_X = t_X / T_AU; 
+
+    t_X = t_X / T_AU;
     t_X .-= t_X[1];
-    # From now on, everything is in a.u., and t0 is shifted to 0 
+    # From now on, everything is in a.u., and t0 is shifted to 0
     # because both E_X and A fields have been already evaluated
-    
+
     NIP::Int = length(I_p_vec);
     N_t::Int = size(t_X,1); # Number of time points
     (dt, tw_iter) = get_dtaxis(t_X);
-    
+
     # Setup momentum grid
     Pz_slice = get(config, "Pz_slice", nothing);
     P_xm, P_ym, P_z = get_Pgrid(config["Np"], Pz_slice, config["dpz"]);
@@ -258,10 +258,10 @@ function complex_Amp_Pspace(E_X::Array{Float64,1}, A::Array{Float64,2},
     if !(haskey(config, "Pz_slice"))
         config["Pz_slice"] = P_z;
     end
-    
+
     # b_p::Array{ComplexF64} = fill(0.0, N_pz, NIP, N_pi);
     @assert size(bp_dest) == (N_pz, N_pi, NIP)
-    
+
     #Phase from photoionization
     IpT::Array{Float64} = transpose(I_p_vec);
     aKemean::Float64 = Stat.mean(aKe_vec);
@@ -271,20 +271,20 @@ function complex_Amp_Pspace(E_X::Array{Float64,1}, A::Array{Float64,2},
         @inbounds DPhase_PI[:,i] .*= dipoleM(sqrt(2*pKe),0; Ip_au=I_p, Py=0,Pz=0);
     end
     PI_ints::Array{ComplexF64,2} = E_X .* DPhase_PI;
-    # cum_Integrate!(PI_ints, dt, dim=1); 
-    PI_ints .*= dt; 
+    # cum_Integrate!(PI_ints, dt, dim=1);
+    PI_ints .*= dt;
     cumsum!(PI_ints, PI_ints; dims=1)
     # Inner integral finished
     # @. PI_ints *= exp(( - Gamma/2) * t_X);
     @. PI_ints *= exp((-1im * daKT - Gamma/2) * t_X);
     PI_ints .*= dt; # For the outer integral, once for all
-    
+
     # h5cach = @sprintf("%s/PIDEBUGtmp1.h5", get_outdir());
     # h5c = HDF5.h5open(h5cach, "w")
     # h5c["PI_ints"] = PI_ints;
     # h5c["I_p"] = I_p_vec
     # HDF5.close(h5c)
-    
+
     P_xm = vec(collect(P_xm)); P_ym = vec(collect(P_ym));
     @floop ThreadedEx() for (ind_p, Px,Py) in zip(1:N_pi, P_xm, P_ym)
         @init begin
@@ -303,7 +303,7 @@ function complex_Amp_Pspace(E_X::Array{Float64,1}, A::Array{Float64,2},
         cumsum!(I_xy, I_xy; dims=1);
         @. vstates = exp(-1im * I_xy);
         ## Here it's -1im for the convenience of taking the dot product later on
-        ## 
+        ##
         for ind_calc in 1:NIP
             PI_int = @inbounds @view PI_ints[:,ind_calc];
             for (ind_z, Pz) in enumerate(P_z)
@@ -313,7 +313,7 @@ function complex_Amp_Pspace(E_X::Array{Float64,1}, A::Array{Float64,2},
                     continue
                 end
                 # PI_int = @inbounds @view PI_ints[:, ind_calc];
-                # intgrand = (exp(1im * vlkv) * exp(1im * K_z * t) * PId * tw 
+                # intgrand = (exp(1im * vlkv) * exp(1im * K_z * t) * PId * tw
                 #             for (t,vlkv,PId,tw) in zip(t_X,I_xy,PI_int, tw_iter));
                 @. intgrand = exp(1im * K_z * t_X) * PI_int;
                 # b_pi[ind_z,ind_calc] = sum(intgrand)*dt;
